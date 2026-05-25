@@ -36,7 +36,7 @@ html, body, #app {
   --input-bg: #1b1d23;
   --input-border: #2b2f36;
   --input-text: rgba(255, 255, 255, 0.87);
-  --edge-color: rgba(255, 255, 255, 0.35);
+  --edge-color: #7a7a7a;
   --edge-animated: rgba(255, 255, 255, 0.6);
   --connector-color: rgba(255, 255, 255, 0.3);
   --connector-connected: rgba(255, 255, 255, 0.5);
@@ -61,7 +61,7 @@ html, body, #app {
   --input-bg: #f5f7fb;
   --input-border: #dfe3ea;
   --input-text: #1a1a1a;
-  --edge-color: rgba(0, 0, 0, 0.35);
+  --edge-color: #6b7280;
   --edge-animated: rgba(0, 0, 0, 0.55);
   --connector-color: rgba(0, 0, 0, 0.25);
   --connector-connected: rgba(0, 0, 0, 0.45);
@@ -72,21 +72,23 @@ html, body, #app {
 /* Vue Flow Base Styles */
 /* ==================== */
 
-/* Canvas background */
 .vue-flow,
 .vue-flow__container,
 .vue-flow__pane {
   background-color: var(--canvas-bg) !important;
 }
 
-/* Background dots */
 .vue-flow__background {
   background-color: var(--canvas-bg) !important;
 }
 
 /* ==================== */
-/* Edge Styles */
+/* Edge Styles - Bezier with Arrows */
 /* ==================== */
+
+.vue-flow__edges {
+  z-index: 5 !important;
+}
 
 .vue-flow__edge {
   pointer-events: stroke;
@@ -99,7 +101,6 @@ html, body, #app {
   fill: none !important;
 }
 
-/* Animated edge */
 .vue-flow__edge.animated .vue-flow__edge-path {
   stroke: var(--edge-animated) !important;
   stroke-dasharray: 8 4;
@@ -111,18 +112,16 @@ html, body, #app {
   to { stroke-dashoffset: 0; }
 }
 
-/* Edge selection */
 .vue-flow__edge.selected .vue-flow__edge-path {
   stroke: rgba(59, 130, 246, 0.8) !important;
   stroke-width: 2.5px !important;
 }
 
-/* Edge hover */
 .vue-flow__edge:hover .vue-flow__edge-path {
   stroke: rgba(59, 130, 246, 0.5) !important;
 }
 
-/* Edge marker (arrow) */
+/* Arrow markers */
 .vue-flow__arrowhead {
   fill: var(--edge-color) !important;
 }

@@ -38,7 +38,7 @@ function toggleTheme() {
 
       <div class="divider" />
 
-      <span class="workflow-name">Untitled Workflow</span>
+      <span class="workflow-name">{{ workflowStore.workflowName }}</span>
     </div>
 
     <div class="topbar-right">

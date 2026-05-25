@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { useThemeStore } from '@/stores/theme'
 import { useWorkflowStore } from '@/stores/workflow'
 import TopBar from '@/components/TopBar.vue'
@@ -16,8 +16,11 @@ onMounted(() => {
   themeStore.init()
 })
 
+onUnmounted(() => {
+  workflowStore.cleanup()
+})
+
 function addNodeFromSidebar(type: NodeType) {
-  // Add at a reasonable default position in the center
   workflowStore.addNode(type, { x: 200 + Math.random() * 200, y: 200 + Math.random() * 100 })
 }
 </script>

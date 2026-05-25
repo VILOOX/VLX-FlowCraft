@@ -51,7 +51,7 @@ const flowEdges = computed<Edge[]>(() =>
     sourceHandle: e.sourceHandle ?? 'output',
     targetHandle: e.targetHandle ?? 'input',
     animated: e.animated ?? false,
-    type: 'default',
+    type: 'bezier',
   }))
 )
 
@@ -66,7 +66,6 @@ function openAddMenu(event: MouseEvent) {
   const cx = event.clientX
   const cy = event.clientY
   addMenuPos.value = { x: cx, y: cy }
-  // Project to flow coordinates
   addMenuFlowPos.value = project({ x: cx - rect.left, y: cy - rect.top })
   addMenuVisible.value = true
 }
@@ -153,7 +152,10 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 onMounted(() => window.addEventListener('keydown', onKeydown))
-onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown)
+  store.cleanup()
+})
 </script>
 
 <template>
@@ -182,9 +184,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
     >
       <Background
         :variant="BackgroundVariant.Dots"
-        :gap="24"
+        :gap="22"
         :size="1.2"
-        :color="isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.1)'"
+        :color="isDark ? '#ffffff14' : '#00000014'"
       />
 
       <Controls
@@ -231,6 +233,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 :deep(.vue-flow) {
   width: 100%;
   height: 100%;
+}
+
+:deep(.vue-flow__edges) {
+  z-index: 5 !important;
 }
 
 :deep(.vue-flow__background) {

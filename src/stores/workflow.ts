@@ -10,20 +10,23 @@ import type {
   NodeType,
   NodeState,
   ExecutionState,
-  ExecutionLogEntry,
 } from '@/types/workflow'
+import { saveWorkflow, executeWorkflow } from '@/services/api'
+import { subscribeToExecution, unsubscribe, type ExecutionUpdate } from '@/services/realtime'
 
 export const useWorkflowStore = defineStore('workflow', () => {
   const nodes = ref<WorkflowNode[]>([])
   const edges = ref<WorkflowEdge[]>([])
   const selectedNodeId = ref<string | null>(null)
+  const workflowId = ref<string | null>(null)
+  const workflowName = ref('Untitled Workflow')
+
   const executionState = ref<ExecutionState>({
     status: 'idle',
     currentNodeId: null,
     nodeStates: {},
     log: [],
   })
-  const wsConnected = ref(false)
 
   const selectedNode = computed(() =>
     nodes.value.find(n => n.id === selectedNodeId.value) ?? null
@@ -108,7 +111,12 @@ export const useWorkflowStore = defineStore('workflow', () => {
     if (node) {
       node.data = { ...node.data, state }
     }
-    executionState.value.nodeStates[nodeId] = state
+  }
+
+  function setEdgeAnimated(sourceId: string, animated: boolean) {
+    edges.value = edges.value.map(e =>
+      e.source === sourceId ? { ...e, animated } : e
+    )
   }
 
   function resetExecution() {
@@ -124,135 +132,85 @@ export const useWorkflowStore = defineStore('workflow', () => {
     edges.value = edges.value.map(e => ({ ...e, animated: false }))
   }
 
-  function addLog(entry: ExecutionLogEntry) {
-    executionState.value.log.unshift(entry)
-    if (executionState.value.log.length > 100) {
-      executionState.value.log.pop()
+  // Handle Realtime updates from backend execution
+  function handleExecutionUpdate(update: ExecutionUpdate) {
+    executionState.value = {
+      status: update.status as ExecutionState['status'],
+      currentNodeId: update.current_node_id,
+      nodeStates: update.node_states ?? {},
+      log: (update.log ?? []).reverse(),
+    }
+
+    const states = update.node_states ?? {}
+    for (const [nodeId, state] of Object.entries(states)) {
+      setNodeState(nodeId, state as NodeState)
+      if (state === 'running') {
+        setEdgeAnimated(nodeId, true)
+      }
+    }
+
+    for (const [nodeId, state] of Object.entries(states)) {
+      if (state === 'success' || state === 'error') {
+        setEdgeAnimated(nodeId, false)
+      }
     }
   }
 
-  function setEdgeAnimated(sourceId: string, animated: boolean) {
-    edges.value = edges.value.map(e =>
-      e.source === sourceId ? { ...e, animated } : e
-    )
-  }
-
-  // Simulated local execution engine (no backend needed for demo)
+  // Persist workflow to DB then trigger backend execution
   async function runWorkflow() {
     const triggerNode = nodes.value.find(n => n.type === 'trigger')
     if (!triggerNode) return
 
     resetExecution()
-    executionState.value.status = 'running'
 
-    // Build execution order via topological sort
-    const order = topologicalSort(nodes.value, edges.value)
+    try {
+      const id = await saveWorkflow(
+        workflowId.value,
+        workflowName.value,
+        nodes.value,
+        edges.value
+      )
+      workflowId.value = id
 
-    for (const nodeId of order) {
-      const node = nodes.value.find(n => n.id === nodeId)
-      if (!node) continue
+      subscribeToExecution(id, handleExecutionUpdate)
 
-      executionState.value.currentNodeId = nodeId
-      setNodeState(nodeId, 'running')
-      setEdgeAnimated(nodeId, true)
-
-      addLog({
-        timestamp: Date.now(),
-        nodeId,
-        nodeLabel: node.data.label,
-        status: 'running',
-        message: `Executing ${node.data.label}...`,
-      })
-
-      try {
-        await executeNode(node)
-        setNodeState(nodeId, 'success')
-        addLog({
-          timestamp: Date.now(),
-          nodeId,
-          nodeLabel: node.data.label,
-          status: 'success',
-          message: `${node.data.label} completed`,
-        })
-      } catch (err) {
-        setNodeState(nodeId, 'error')
-        setEdgeAnimated(nodeId, false)
-        addLog({
-          timestamp: Date.now(),
-          nodeId,
-          nodeLabel: node.data.label,
-          status: 'error',
-          message: `${node.data.label} failed: ${err}`,
-        })
-        executionState.value.status = 'error'
-        executionState.value.currentNodeId = null
-        return
-      }
-    }
-
-    executionState.value.status = 'completed'
-    executionState.value.currentNodeId = null
-  }
-
-  async function executeNode(node: WorkflowNode): Promise<void> {
-    if (node.type === 'trigger') {
-      await delay(400)
-    } else if (node.type === 'delay') {
-      const d = node.data as import('@/types/workflow').DelayNodeData
-      const ms = d.unit === 'seconds' ? d.value * 1000
-        : d.unit === 'minutes' ? d.value * 60000
-        : d.value * 3600000
-      // Cap at 3s for demo
-      await delay(Math.min(ms, 3000))
-    } else if (node.type === 'webhookMessage') {
-      const d = node.data as import('@/types/workflow').WebhookMessageNodeData
-      if (!d.webhookUrl) throw new Error('Webhook URL is required')
-      // Simulate the request
-      await delay(800)
-      // In real use: await fetch(d.webhookUrl, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ content: d.messageText }) })
+      executionState.value.status = 'running'
+      await executeWorkflow(id)
+    } catch (err) {
+      executionState.value.status = 'error'
+      console.error('Failed to run workflow:', err)
     }
   }
 
-  function delay(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms))
+  async function persistWorkflow() {
+    try {
+      const id = await saveWorkflow(
+        workflowId.value,
+        workflowName.value,
+        nodes.value,
+        edges.value
+      )
+      workflowId.value = id
+    } catch (err) {
+      console.error('Failed to save workflow:', err)
+    }
   }
 
-  function topologicalSort(
-    nodeList: WorkflowNode[],
-    edgeList: WorkflowEdge[]
-  ): string[] {
-    const inDegree: Record<string, number> = {}
-    const adj: Record<string, string[]> = {}
-
-    for (const n of nodeList) {
-      inDegree[n.id] = 0
-      adj[n.id] = []
-    }
-
-    for (const e of edgeList) {
-      adj[e.source].push(e.target)
-      inDegree[e.target] = (inDegree[e.target] ?? 0) + 1
-    }
-
-    const queue = nodeList
-      .filter(n => (inDegree[n.id] ?? 0) === 0)
-      .map(n => n.id)
-
-    const result: string[] = []
-    while (queue.length > 0) {
-      const id = queue.shift()!
-      result.push(id)
-      for (const next of (adj[id] ?? [])) {
-        inDegree[next]--
-        if (inDegree[next] === 0) queue.push(next)
-      }
-    }
-
-    return result
+  function loadFromData(data: { id: string; name: string; nodes: WorkflowNode[]; edges: WorkflowEdge[] }) {
+    workflowId.value = data.id
+    workflowName.value = data.name
+    nodes.value = data.nodes
+    edges.value = data.edges
+    selectedNodeId.value = null
+    resetExecution()
   }
 
   function exportWorkflow() {
     return JSON.stringify({ nodes: nodes.value, edges: edges.value }, null, 2)
+  }
+
+  function cleanup() {
+    unsubscribe()
   }
 
   return {
@@ -261,7 +219,8 @@ export const useWorkflowStore = defineStore('workflow', () => {
     selectedNodeId,
     selectedNode,
     executionState,
-    wsConnected,
+    workflowId,
+    workflowName,
     addNode,
     removeNode,
     updateNodeData,
@@ -272,6 +231,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
     setNodeState,
     resetExecution,
     runWorkflow,
+    persistWorkflow,
+    loadFromData,
     exportWorkflow,
+    cleanup,
   }
 })
