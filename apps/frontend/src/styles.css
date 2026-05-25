@@ -1,0 +1,172 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-slate-950 text-slate-100 antialiased;
+}
+
+body.light {
+  color-scheme: light;
+  @apply bg-slate-50 text-slate-950;
+}
+
+/* Vue Flow Core Styling */
+.vf-node {
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+  border-radius: 12px !important;
+}
+
+.vf-node.selected {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.8), 0 0 12px rgba(59, 130, 246, 0.4);
+  border-color: #3b82f6 !important;
+}
+
+.vf-node:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.vue-flow__edges {
+  z-index: 5 !important;
+}
+
+.vue-flow__edge-path {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke 0.15s ease, stroke-width 0.15s ease;
+}
+
+.vue-flow__edge:hover .vue-flow__edge-path {
+  stroke-width: 3 !important;
+  filter: drop-shadow(0 0 6px rgba(96, 165, 250, 0.6));
+}
+
+.vue-flow__edge.selected .vue-flow__edge-path {
+  stroke: #3b82f6 !important;
+  stroke-width: 3 !important;
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.8));
+}
+
+/* Vue Flow Handle Styling - n8n style */
+.vue-flow__handle {
+  background: #94a3b8;
+  border: 2px solid #1e293b;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.vue-flow__handle:hover {
+  background: #cbd5e1;
+  border-color: #60a5fa;
+  box-shadow: 0 0 8px rgba(96, 165, 250, 0.8);
+  width: 14px;
+  height: 14px;
+}
+
+.vue-flow__handle.connectable {
+  cursor: crosshair;
+}
+
+.vue-flow__handle.connecting {
+  background: #60a5fa;
+  border-color: #3b82f6;
+  box-shadow: 0 0 12px rgba(96, 165, 250, 1);
+  width: 14px;
+  height: 14px;
+}
+
+body.light .vue-flow__handle {
+  background: #cbd5e1;
+  border-color: #f1f5f9;
+}
+
+body.light .vue-flow__handle:hover {
+  background: #e2e8f0;
+  border-color: #0ea5e9;
+}
+
+body.light .vue-flow__handle.connecting {
+  background: #0ea5e9;
+  border-color: #0284c7;
+}
+
+/* Vue Flow Background - Professional Grid */
+.vue-flow__viewport {
+  background: 
+    linear-gradient(rgba(100, 116, 139, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 116, 139, 0.15) 1px, transparent 1px),
+    linear-gradient(rgba(100, 116, 139, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 116, 139, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px, 40px 40px, 5px 5px, 5px 5px;
+  background-position: 0 0, 0 0, 0 0, 0 0;
+  background-attachment: fixed;
+}
+
+body.light .vue-flow__viewport {
+  background: 
+    linear-gradient(rgba(226, 232, 240, 0.4) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(226, 232, 240, 0.4) 1px, transparent 1px),
+    linear-gradient(rgba(226, 232, 240, 0.2) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(226, 232, 240, 0.2) 1px, transparent 1px);
+  background-size: 40px 40px, 40px 40px, 5px 5px, 5px 5px;
+}
+
+/* Connection Line Styling */
+.vue-flow__connectionline {
+  stroke: #60a5fa;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* Minimap Styling */
+.vue-flow__minimap {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(100, 116, 139, 0.2);
+}
+
+body.light .vue-flow__minimap {
+  background: rgba(248, 250, 252, 0.8);
+  border: 1px solid rgba(226, 232, 240, 0.5);
+}
+
+/* Controls Styling */
+.vue-flow__controls {
+  background: rgba(15, 23, 42, 0.8) !important;
+  border: 1px solid rgba(100, 116, 139, 0.2) !important;
+  border-radius: 8px !important;
+  padding: 4px !important;
+}
+
+.vue-flow__controls button {
+  background: rgba(51, 65, 85, 0.6) !important;
+  border: 1px solid rgba(100, 116, 139, 0.2) !important;
+  border-radius: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+.vue-flow__controls button:hover {
+  background: rgba(71, 85, 105, 0.8) !important;
+  border-color: rgba(100, 116, 139, 0.4) !important;
+}
+
+body.light .vue-flow__controls {
+  background: rgba(248, 250, 252, 0.8) !important;
+  border: 1px solid rgba(226, 232, 240, 0.5) !important;
+}
+
+body.light .vue-flow__controls button {
+  background: rgba(241, 245, 249, 0.6) !important;
+  border: 1px solid rgba(226, 232, 240, 0.5) !important;
+}
+
+body.light .vue-flow__controls button:hover {
+  background: rgba(226, 232, 240, 0.8) !important;
+  border-color: rgba(203, 213, 225, 0.6) !important;
+}
+
