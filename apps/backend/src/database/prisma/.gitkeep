@@ -1,0 +1,3 @@
+# Prisma
+The migrations directory should be generated automatically by Prisma.
+/.env.local

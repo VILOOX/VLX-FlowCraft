@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gray-950 text-white;
+}
+
+.node-container {
+  @apply bg-gray-800 border-2 border-gray-700 rounded-lg p-3 min-w-40 shadow-lg;
+}
+
+.node-container:hover {
+  @apply shadow-xl;
+}
+
+.status-dot {
+  @apply rounded-full border;
+  width: 10px;
+  height: 10px;
+  transition: background-color 0.3s, transform 0.3s;
+}
+
+.status-dot.running {
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
