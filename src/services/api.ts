@@ -3,7 +3,7 @@ import type { WorkflowNode, WorkflowEdge } from '@/types/workflow'
 
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/workflow-engine`
 
-function getHeaders() {
+function headers() {
   return {
     Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
     'Content-Type': 'application/json',
@@ -11,7 +11,6 @@ function getHeaders() {
   }
 }
 
-// Workflow CRUD
 export async function saveWorkflow(
   id: string | null,
   name: string,
@@ -47,15 +46,6 @@ export async function loadWorkflow(id: string) {
   return data
 }
 
-export async function listWorkflows() {
-  const { data, error } = await supabase
-    .from('workflows')
-    .select('id, name, updated_at')
-    .order('updated_at', { ascending: false })
-  if (error) throw error
-  return data
-}
-
 export async function deleteWorkflow(id: string) {
   const { error } = await supabase
     .from('workflows')
@@ -64,11 +54,10 @@ export async function deleteWorkflow(id: string) {
   if (error) throw error
 }
 
-// Execution
 export async function executeWorkflow(workflowId: string): Promise<{ executionId: string }> {
   const res = await fetch(`${FUNCTION_URL}/execute`, {
     method: 'POST',
-    headers: getHeaders(),
+    headers: headers(),
     body: JSON.stringify({ workflowId }),
   })
   if (!res.ok) {
@@ -80,7 +69,7 @@ export async function executeWorkflow(workflowId: string): Promise<{ executionId
 
 export async function getLatestExecution(workflowId: string) {
   const res = await fetch(`${FUNCTION_URL}/executions/${workflowId}`, {
-    headers: getHeaders(),
+    headers: headers(),
   })
   if (!res.ok) return null
   return res.json()

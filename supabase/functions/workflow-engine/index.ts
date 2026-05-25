@@ -1,3 +1,19 @@
+/*
+  Workflow Execution Engine - Supabase Edge Function
+
+  Handles:
+  - POST /execute: Start workflow execution
+  - GET /executions/:workflowId: Get latest execution
+  - GET /health: Health check
+
+  Execution flow:
+  1. Persist execution record
+  2. Topological sort nodes
+  3. Execute each node in order (trigger/delay/webhook)
+  4. Update execution state in DB (triggers Realtime to frontend)
+  5. Mark completed or error
+*/
+
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -5,6 +21,8 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
+
+// --- Types ---
 
 interface WorkflowNode {
   id: string;
@@ -29,6 +47,8 @@ interface LogEntry {
   message: string;
 }
 
+// --- Graph Utilities ---
+
 function topologicalSort(
   nodes: WorkflowNode[],
   edges: WorkflowEdge[]
@@ -46,7 +66,9 @@ function topologicalSort(
     inDegree[e.target] = (inDegree[e.target] ?? 0) + 1;
   }
 
-  const queue = nodes.filter((n) => (inDegree[n.id] ?? 0) === 0).map((n) => n.id);
+  const queue: string[] = nodes
+    .filter((n) => (inDegree[n.id] ?? 0) === 0)
+    .map((n) => n.id);
   const result: string[] = [];
 
   while (queue.length > 0) {
@@ -61,32 +83,140 @@ function topologicalSort(
   return result;
 }
 
+// --- Node Executors ---
+
+async function executeTriggerNode(_data: Record<string, unknown>): Promise<void> {
+  // Trigger fires immediately - just a small delay to simulate
+  await new Promise((r) => setTimeout(r, 300));
+}
+
+async function executeDelayNode(data: Record<string, unknown>): Promise<void> {
+  const value = (data.value as number) ?? 5;
+  const unit = (data.unit as string) ?? "seconds";
+  const ms =
+    unit === "seconds"
+      ? value * 1000
+      : unit === "minutes"
+      ? value * 60000
+      : value * 3600000;
+  // Cap at 5s for safety
+  await new Promise((r) => setTimeout(r, Math.min(ms, 5000)));
+}
+
+async function executeWebhookNode(data: Record<string, unknown>): Promise<void> {
+  const url = data.webhookUrl as string;
+  const message = data.messageText as string;
+  if (!url) throw new Error("Webhook URL is required");
+  await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content: message }),
+  });
+}
+
 async function executeNode(node: WorkflowNode): Promise<void> {
-  if (node.type === "trigger") {
-    // Trigger fires immediately
-    await new Promise((r) => setTimeout(r, 400));
-  } else if (node.type === "delay") {
-    const d = node.data as { value: number; unit: string };
-    const value = d.value ?? 5;
-    const unit = d.unit ?? "seconds";
-    const ms =
-      unit === "seconds"
-        ? value * 1000
-        : unit === "minutes"
-        ? value * 60000
-        : value * 3600000;
-    // Cap at 3s for demo safety
-    await new Promise((r) => setTimeout(r, Math.min(ms, 3000)));
-  } else if (node.type === "webhookMessage") {
-    const d = node.data as { webhookUrl: string; messageText: string };
-    if (!d.webhookUrl) throw new Error("Webhook URL is required");
-    await fetch(d.webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: d.messageText }),
-    });
+  switch (node.type) {
+    case "trigger":
+      await executeTriggerNode(node.data);
+      break;
+    case "delay":
+      await executeDelayNode(node.data);
+      break;
+    case "webhookMessage":
+      await executeWebhookNode(node.data);
+      break;
+    default:
+      throw new Error(`Unknown node type: ${node.type}`);
   }
 }
+
+// --- Main Execution Logic ---
+
+async function runExecution(
+  supabase: ReturnType<typeof createClient>,
+  executionId: string,
+  workflowId: string,
+  nodes: WorkflowNode[],
+  edges: WorkflowEdge[]
+): Promise<void> {
+  const nodeStates: Record<string, string> = {};
+  const logEntries: LogEntry[] = [];
+
+  const order = topologicalSort(nodes, edges);
+
+  for (const nodeId of order) {
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) continue;
+
+    const nodeLabel = (node.data.label as string) ?? node.type;
+
+    // Mark running
+    nodeStates[nodeId] = "running";
+    logEntries.push({
+      timestamp: Date.now(),
+      nodeId,
+      nodeLabel,
+      status: "running",
+      message: `Executing ${nodeLabel}...`,
+    });
+
+    await supabase
+      .from("executions")
+      .update({
+        current_node_id: nodeId,
+        node_states: { ...nodeStates },
+        log: [...logEntries],
+      })
+      .eq("id", executionId);
+
+    try {
+      await executeNode(node);
+      nodeStates[nodeId] = "success";
+      logEntries.push({
+        timestamp: Date.now(),
+        nodeId,
+        nodeLabel,
+        status: "success",
+        message: `${nodeLabel} completed`,
+      });
+    } catch (err) {
+      nodeStates[nodeId] = "error";
+      logEntries.push({
+        timestamp: Date.now(),
+        nodeId,
+        nodeLabel,
+        status: "error",
+        message: `${nodeLabel} failed: ${err instanceof Error ? err.message : String(err)}`,
+      });
+
+      await supabase
+        .from("executions")
+        .update({
+          status: "error",
+          current_node_id: null,
+          node_states: { ...nodeStates },
+          log: [...logEntries],
+          finished_at: new Date().toISOString(),
+        })
+        .eq("id", executionId);
+      return;
+    }
+  }
+
+  // Mark completed
+  await supabase
+    .from("executions")
+    .update({
+      status: "completed",
+      current_node_id: null,
+      node_states: { ...nodeStates },
+      log: [...logEntries],
+      finished_at: new Date().toISOString(),
+    })
+    .eq("id", executionId);
+}
+
+// --- HTTP Handler ---
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -97,7 +227,14 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const path = url.pathname.replace("/workflow-engine", "");
 
-    // POST /execute - Run a workflow
+    // GET /health
+    if (path === "/health") {
+      return new Response(JSON.stringify({ status: "ok" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // POST /execute
     if (path === "/execute" && req.method === "POST") {
       const body = await req.json();
       const { workflowId } = body as { workflowId: string };
@@ -107,7 +244,6 @@ Deno.serve(async (req: Request) => {
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
       );
 
-      // Fetch workflow
       const { data: workflow, error: wfError } = await supabase
         .from("workflows")
         .select("nodes, edges")
@@ -132,7 +268,6 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // Create execution record
       const { data: execution, error: execError } = await supabase
         .from("executions")
         .insert({
@@ -151,119 +286,24 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const executionId = execution.id;
-      const nodeStates: Record<string, string> = {};
-      const logEntries: LogEntry[] = [];
+      // Run in background
+      const runPromise = runExecution(
+        supabase,
+        execution.id,
+        workflowId,
+        nodes,
+        edges
+      );
 
-      // Run execution in background using waitUntil
-      const runPromise = (async () => {
-        try {
-          const order = topologicalSort(nodes, edges);
-
-          for (const nodeId of order) {
-            const node = nodes.find((n) => n.id === nodeId);
-            if (!node) continue;
-
-            nodeStates[nodeId] = "running";
-            const nodeLabel = (node.data as Record<string, unknown>).label as string ?? node.type;
-
-            logEntries.push({
-              timestamp: Date.now(),
-              nodeId,
-              nodeLabel,
-              status: "running",
-              message: `Executing ${nodeLabel}...`,
-            });
-
-            // Update execution state in DB (triggers Realtime)
-            await supabase
-              .from("executions")
-              .update({
-                current_node_id: nodeId,
-                node_states: { ...nodeStates },
-                log: [...logEntries],
-              })
-              .eq("id", executionId);
-
-            try {
-              await executeNode(node);
-              nodeStates[nodeId] = "success";
-              logEntries.push({
-                timestamp: Date.now(),
-                nodeId,
-                nodeLabel,
-                status: "success",
-                message: `${nodeLabel} completed`,
-              });
-            } catch (err) {
-              nodeStates[nodeId] = "error";
-              logEntries.push({
-                timestamp: Date.now(),
-                nodeId,
-                nodeLabel,
-                status: "error",
-                message: `${nodeLabel} failed: ${err}`,
-              });
-
-              await supabase
-                .from("executions")
-                .update({
-                  status: "error",
-                  current_node_id: null,
-                  node_states: { ...nodeStates },
-                  log: [...logEntries],
-                  finished_at: new Date().toISOString(),
-                })
-                .eq("id", executionId);
-              return;
-            }
-          }
-
-          // Mark completed
-          await supabase
-            .from("executions")
-            .update({
-              status: "completed",
-              current_node_id: null,
-              node_states: { ...nodeStates },
-              log: [...logEntries],
-              finished_at: new Date().toISOString(),
-            })
-            .eq("id", executionId);
-        } catch (err) {
-          await supabase
-            .from("executions")
-            .update({
-              status: "error",
-              current_node_id: null,
-              node_states: { ...nodeStates },
-              log: [
-                ...logEntries,
-                {
-                  timestamp: Date.now(),
-                  nodeId: "",
-                  nodeLabel: "Engine",
-                  status: "error",
-                  message: `Engine error: ${err}`,
-                },
-              ],
-              finished_at: new Date().toISOString(),
-            })
-            .eq("id", executionId);
-        }
-      })();
-
-      // Use waitUntil to run execution in background
       EdgeRuntime.waitUntil(runPromise);
 
-      // Return execution ID immediately
       return new Response(
-        JSON.stringify({ executionId, status: "running" }),
+        JSON.stringify({ executionId: execution.id, status: "running" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // GET /executions/:workflowId - Get latest execution for a workflow
+    // GET /executions/:workflowId
     const execMatch = path.match(/^\/executions\/([a-f0-9-]+)$/);
     if (execMatch && req.method === "GET") {
       const supabase = createClient(
@@ -287,13 +327,6 @@ Deno.serve(async (req: Request) => {
       }
 
       return new Response(JSON.stringify(data), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // GET /health
-    if (path === "/health") {
-      return new Response(JSON.stringify({ status: "ok" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

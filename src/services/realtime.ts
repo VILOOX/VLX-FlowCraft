@@ -18,7 +18,6 @@ let channel: ReturnType<typeof supabase.channel> | null = null
 
 export function subscribeToExecution(workflowId: string, onUpdate: OnUpdate) {
   unsubscribe()
-
   channel = supabase
     .channel('exec-realtime')
     .on(

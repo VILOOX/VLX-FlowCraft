@@ -18,10 +18,12 @@ html, body, #app {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Dark theme variables */
+/* ==================== */
+/* Dark Theme           */
+/* ==================== */
+
 .dark {
   --canvas-bg: #0f1115;
-  --canvas-dot: rgba(255, 255, 255, 0.07);
   --node-bg: #1b1d23;
   --node-border: #2b2f36;
   --node-text: rgba(255, 255, 255, 0.87);
@@ -41,12 +43,15 @@ html, body, #app {
   --connector-color: rgba(255, 255, 255, 0.3);
   --connector-connected: rgba(255, 255, 255, 0.5);
   --handle-bg: transparent;
+  --accent-color: #3b82f6;
 }
 
-/* Light theme variables */
+/* ==================== */
+/* Light Theme          */
+/* ==================== */
+
 .light {
   --canvas-bg: #f5f7fb;
-  --canvas-dot: rgba(0, 0, 0, 0.12);
   --node-bg: #ffffff;
   --node-border: #dfe3ea;
   --node-text: #1a1a1a;
@@ -66,10 +71,11 @@ html, body, #app {
   --connector-color: rgba(0, 0, 0, 0.25);
   --connector-connected: rgba(0, 0, 0, 0.45);
   --handle-bg: transparent;
+  --accent-color: #3b82f6;
 }
 
 /* ==================== */
-/* Vue Flow Base Styles */
+/* Vue Flow Base        */
 /* ==================== */
 
 .vue-flow,
@@ -83,7 +89,7 @@ html, body, #app {
 }
 
 /* ==================== */
-/* Edge Styles - Bezier with Arrows */
+/* Edge Styles          */
 /* ==================== */
 
 .vue-flow__edges {
@@ -121,7 +127,6 @@ html, body, #app {
   stroke: rgba(59, 130, 246, 0.5) !important;
 }
 
-/* Arrow markers */
 .vue-flow__arrowhead {
   fill: var(--edge-color) !important;
 }
@@ -130,7 +135,6 @@ html, body, #app {
   fill: var(--edge-animated) !important;
 }
 
-/* Connection line when dragging */
 .vue-flow__connection-line {
   stroke: rgba(59, 130, 246, 0.7) !important;
   stroke-width: 2px !important;
@@ -143,7 +147,7 @@ html, body, #app {
 }
 
 /* ==================== */
-/* Handle (Connector) Styles */
+/* Handle / Connector   */
 /* ==================== */
 
 .vue-flow__handle {
@@ -162,7 +166,7 @@ html, body, #app {
 }
 
 /* ==================== */
-/* Node Styles */
+/* Node Base            */
 /* ==================== */
 
 .vue-flow__node {
@@ -186,7 +190,7 @@ html, body, #app {
 }
 
 /* ==================== */
-/* Controls */
+/* Controls             */
 /* ==================== */
 
 .vue-flow__controls {
@@ -217,7 +221,7 @@ html, body, #app {
 }
 
 /* ==================== */
-/* Selection Box */
+/* Selection Box        */
 /* ==================== */
 
 .vue-flow__selection {
@@ -226,29 +230,7 @@ html, body, #app {
 }
 
 /* ==================== */
-/* Node State Animations */
-/* ==================== */
-
-@keyframes node-glow-green {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.5); }
-  50% { box-shadow: 0 0 0 2px rgba(34, 197, 94, 1), 0 0 16px rgba(34, 197, 94, 0.3); }
-}
-
-@keyframes node-glow-error {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.5); }
-  50% { box-shadow: 0 0 0 2px rgba(239, 68, 68, 1), 0 0 12px rgba(239, 68, 68, 0.3); }
-}
-
-.node-state-running {
-  animation: node-glow-green 1.2s ease-in-out infinite;
-}
-
-.node-state-error {
-  animation: node-glow-error 0.8s ease-in-out infinite;
-}
-
-/* ==================== */
-/* Scrollbar */
+/* Scrollbar            */
 /* ==================== */
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }

@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
-import { useThemeStore } from '@/stores/theme'
-import { useWorkflowStore } from '@/stores/workflow'
-import TopBar from '@/components/TopBar.vue'
-import WorkflowSidebar from '@/components/WorkflowSidebar.vue'
-import WorkflowCanvas from '@/components/WorkflowCanvas.vue'
-import NodeConfigPanel from '@/components/NodeConfigPanel.vue'
-import ExecutionLog from '@/components/ExecutionLog.vue'
+import { useThemeStore } from '@/stores/theme.store'
+import { useExecutionStore } from '@/stores/execution.store'
+import { useWorkflowStore } from '@/stores/workflow.store'
+import TopBar from '@/components/topbar/TopBar.vue'
+import WorkflowSidebar from '@/components/sidebar/WorkflowSidebar.vue'
+import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue'
+import NodeConfigPanel from '@/components/inspector/NodeConfigPanel.vue'
+import ExecutionLog from '@/components/execution/ExecutionLog.vue'
 import type { NodeType } from '@/types/workflow'
 
 const themeStore = useThemeStore()
+const execStore = useExecutionStore()
 const workflowStore = useWorkflowStore()
 
 onMounted(() => {
@@ -17,11 +19,14 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  workflowStore.cleanup()
+  execStore.cleanup()
 })
 
 function addNodeFromSidebar(type: NodeType) {
-  workflowStore.addNode(type, { x: 200 + Math.random() * 200, y: 200 + Math.random() * 100 })
+  workflowStore.addNode(type, {
+    x: 200 + Math.random() * 200,
+    y: 200 + Math.random() * 100,
+  })
 }
 </script>
 

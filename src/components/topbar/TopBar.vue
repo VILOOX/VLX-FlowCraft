@@ -1,22 +1,23 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useThemeStore } from '@/stores/theme'
-import { useWorkflowStore } from '@/stores/workflow'
+import { useThemeStore } from '@/stores/theme.store'
+import { useWorkflowStore } from '@/stores/workflow.store'
+import { useExecutionStore } from '@/stores/execution.store'
 
 const themeStore = useThemeStore()
 const workflowStore = useWorkflowStore()
+const execStore = useExecutionStore()
 
-const isDark = computed(() => themeStore.theme === 'dark')
-const isRunning = computed(() => workflowStore.executionState.status === 'running')
-const isCompleted = computed(() => workflowStore.executionState.status === 'completed')
-const isError = computed(() => workflowStore.executionState.status === 'error')
+const isDark = computed(() => themeStore.isDark)
+const isRunning = computed(() => execStore.isRunning)
+const execStatus = computed(() => execStore.state.status)
 
 function run() {
-  workflowStore.runWorkflow()
+  execStore.run()
 }
 
 function stop() {
-  workflowStore.resetExecution()
+  execStore.reset()
 }
 
 function toggleTheme() {
@@ -35,24 +36,20 @@ function toggleTheme() {
         </svg>
         <span class="brand-name">FlowCraft</span>
       </div>
-
       <div class="divider" />
-
       <span class="workflow-name">{{ workflowStore.workflowName }}</span>
     </div>
 
     <div class="topbar-right">
-      <!-- Execution status -->
-      <div v-if="isRunning || isCompleted || isError" class="status-badge" :class="{
+      <div v-if="isRunning || execStatus === 'completed' || execStatus === 'error'" class="status-badge" :class="{
         'status-running': isRunning,
-        'status-success': isCompleted,
-        'status-error': isError
+        'status-success': execStatus === 'completed',
+        'status-error': execStatus === 'error'
       }">
         <div class="status-dot" />
-        <span>{{ isRunning ? 'Running' : isCompleted ? 'Completed' : 'Failed' }}</span>
+        <span>{{ isRunning ? 'Running' : execStatus === 'completed' ? 'Completed' : 'Failed' }}</span>
       </div>
 
-      <!-- Controls -->
       <button v-if="!isRunning" class="run-btn" @click="run">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
           <polygon points="5,3 19,12 5,21" fill="currentColor" />
@@ -121,7 +118,6 @@ function toggleTheme() {
 .workflow-name {
   font-size: 13px;
   color: var(--panel-text-muted);
-  font-weight: 400;
 }
 
 .topbar-right {
@@ -141,23 +137,9 @@ function toggleTheme() {
   border: 1px solid transparent;
 }
 
-.status-running {
-  background: rgba(34, 197, 94, 0.1);
-  border-color: rgba(34, 197, 94, 0.25);
-  color: #22c55e;
-}
-
-.status-success {
-  background: rgba(34, 197, 94, 0.08);
-  border-color: rgba(34, 197, 94, 0.2);
-  color: #4ade80;
-}
-
-.status-error {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.25);
-  color: #f87171;
-}
+.status-running { background: rgba(34, 197, 94, 0.1); border-color: rgba(34, 197, 94, 0.25); color: #22c55e; }
+.status-success { background: rgba(34, 197, 94, 0.08); border-color: rgba(34, 197, 94, 0.2); color: #4ade80; }
+.status-error { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.25); color: #f87171; }
 
 .status-dot {
   width: 6px;
@@ -195,9 +177,7 @@ function toggleTheme() {
   border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
-.run-btn:hover {
-  background: rgba(59, 130, 246, 0.25);
-}
+.run-btn:hover { background: rgba(59, 130, 246, 0.25); }
 
 .stop-btn {
   background: rgba(239, 68, 68, 0.12);
@@ -205,9 +185,7 @@ function toggleTheme() {
   border: 1px solid rgba(239, 68, 68, 0.25);
 }
 
-.stop-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
-}
+.stop-btn:hover { background: rgba(239, 68, 68, 0.2); }
 
 .icon-btn {
   width: 32px;

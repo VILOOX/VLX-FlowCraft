@@ -1,174 +1,62 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { Handle, Position } from '@vue-flow/core'
-import NodeStateIndicator from './NodeStateIndicator.vue'
 import type { WebhookMessageNodeData } from '@/types/workflow'
+import BaseNode from './BaseNode.vue'
 
-const props = defineProps<{ data: WebhookMessageNodeData; selected?: boolean }>()
-
-const displayText = computed(() => {
-  if (!props.data.webhookUrl) return 'No URL set'
-  try {
-    const u = new URL(props.data.webhookUrl)
-    return u.hostname
-  } catch {
-    return props.data.webhookUrl.slice(0, 12) + '...'
-  }
-})
+defineProps<{
+  id: string
+  data: WebhookMessageNodeData
+}>()
 </script>
 
 <template>
-  <div
-    class="workflow-node action-node"
-    :class="{ 'node-state-running': data.state === 'running' }"
+  <BaseNode
+    :id="id"
+    :data="data"
+    :show-input="true"
+    :show-output="true"
+    :width="96"
+    :height="96"
+    :border-radius="16"
   >
-    <NodeStateIndicator :state="data.state" />
-
-    <!-- Input handle -->
-    <Handle
-      id="input"
-      type="target"
-      :position="Position.Left"
-      class="input-handle"
-    />
-
-    <div class="node-icon">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <path d="M20 12V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.8" />
-        <polyline points="16,18 18,20 22,16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.8" />
-      </svg>
-    </div>
-
-    <div class="node-label">{{ data.label }}</div>
-    <div class="node-sublabel">{{ displayText }}</div>
-
-    <!-- Output handle -->
-    <Handle
-      id="output"
-      type="source"
-      :position="Position.Right"
-      class="output-handle"
-    />
-  </div>
+    <template #default>
+      <div class="webhook-inner">
+        <svg class="webhook-icon" width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <path d="M22 2L11 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          <path d="M22 2L15 22l-4-9-9-4L22 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+        </svg>
+        <span class="webhook-label">{{ data.label }}</span>
+        <span class="webhook-url">{{ data.webhookUrl ? 'Configured' : 'No URL' }}</span>
+      </div>
+    </template>
+  </BaseNode>
 </template>
 
 <style scoped>
-.action-node {
-  width: 96px;
-  height: 96px;
-  border-radius: 24px;
-  background: var(--node-bg);
-  border: 1px solid var(--node-border);
-  box-shadow: var(--node-shadow);
+.webhook-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  position: relative;
-  cursor: pointer;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  user-select: none;
+  width: 100%;
+  height: 100%;
 }
 
-.action-node:hover {
-  border-color: rgba(59, 130, 246, 0.4);
+.webhook-icon {
+  color: var(--accent-color, #3b82f6);
+  margin-bottom: 2px;
 }
 
-.node-icon {
-  color: var(--node-text-muted);
-  line-height: 1;
-  margin-bottom: 1px;
-}
-
-.node-label {
-  font-size: 10px;
+.webhook-label {
+  font-size: 11px;
   font-weight: 600;
   color: var(--node-text);
-  letter-spacing: 0.01em;
+  text-align: center;
   line-height: 1.2;
 }
 
-.node-sublabel {
+.webhook-url {
   font-size: 9px;
   color: var(--node-text-muted);
-  font-weight: 400;
-  line-height: 1.2;
-  text-align: center;
-  padding: 0 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 80px;
-}
-
-/* Input handle */
-.input-handle {
-  width: 24px !important;
-  height: 24px !important;
-  background: transparent !important;
-  border: none !important;
-  left: -12px !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  cursor: crosshair !important;
-}
-
-.input-handle::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 6px;
-  height: 12px;
-  background: var(--connector-color);
-  border-radius: 999px;
-  pointer-events: none;
-  transition: all 0.2s;
-}
-
-.input-handle:hover::after {
-  width: 8px;
-  height: 14px;
-  background: rgba(59, 130, 246, 0.7);
-}
-
-/* Output handle */
-.output-handle {
-  width: 24px !important;
-  height: 24px !important;
-  background: transparent !important;
-  border: none !important;
-  right: -12px !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  cursor: crosshair !important;
-}
-
-.output-handle::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 6px;
-  height: 12px;
-  background: var(--connector-color);
-  border-radius: 999px;
-  pointer-events: none;
-  transition: all 0.2s;
-}
-
-.output-handle:hover::after {
-  width: 8px;
-  height: 14px;
-  background: rgba(59, 130, 246, 0.7);
-}
-
-.output-handle.vue-flow__handle--connected::after {
-  width: 12px;
-  height: 12px;
-  background: var(--connector-connected);
 }
 </style>
